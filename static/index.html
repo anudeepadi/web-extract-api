@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCRAPE — Neural Extraction Engine</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #111113;
+            --bg-tertiary: #1a1a1d;
+            --bg-card: rgba(20, 20, 23, 0.8);
+            --text-primary: #fafafa;
+            --text-secondary: #a0a0a5;
+            --text-muted: #606065;
+            --accent-cyan: #00f5d4;
+            --accent-orange: #ff6b35;
+            --accent-pink: #f72585;
+            --accent-blue: #4361ee;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-active: rgba(0, 245, 212, 0.3);
+            --glow-cyan: 0 0 60px rgba(0, 245, 212, 0.15);
+            --glow-orange: 0 0 60px rgba(255, 107, 53, 0.15);
+            --font-display: 'Syne', sans-serif;
+            --font-serif: 'Instrument Serif', serif;
+            --font-mono: 'Space Mono', monospace;
+            --radius: 16px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-display);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Animated Background */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-gradient::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(0, 245, 212, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(255, 107, 53, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(67, 97, 238, 0.04) 0%, transparent 70%);
+            animation: bgFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes bgFloat {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(2%, 2%) rotate(1deg); }
+            66% { transform: translate(-1%, 1%) rotate(-1deg); }
+        }
+
+        /* Noise Overlay */
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* Main Container */
+        .container {
+            position: relative;
+            z-index: 2;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 4rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .logo-mark {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--bg-primary);
+            transform: rotate(-3deg);
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero-title {
+            font-family: var(--font-serif);
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 400;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title .accent {
+            font-style: italic;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-orange));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            animation: fadeInUp 0.8s ease-out 0.2s backwards;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            transition: all 0.4s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-active);
+            box-shadow: var(--glow-cyan);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .card-badge {
+            font-family: var(--font-mono);
+            font-size: 0.625rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(0, 245, 212, 0.1);
+            color: var(--accent-cyan);
+            border-radius: 4px;
+            letter-spacing: 0.05em;
+        }
+
+        /* URL Input */
+        .url-input-wrapper {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 1.25rem 1.5rem;
+            padding-left: 3.5rem;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .url-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .url-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 4px rgba(0, 245, 212, 0.1);
+        }
+
+        .url-input-icon {
+            position: absolute;
+            left: 1.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.25rem;
+        }
+
+        /* Options Panel */
+        .options-panel {
+            margin-bottom: 2rem;
+        }
+
+        .options-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .options-header:hover {
+            background: rgba(30, 30, 35, 1);
+        }
+
+        .options-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .options-header-title {
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .options-count {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            padding: 0.2rem 0.5rem;
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+            border-radius: 4px;
+        }
+
+        .options-chevron {
+            transition: transform 0.3s ease;
+        }
+
+        .options-panel.open .options-chevron {
+            transform: rotate(180deg);
+        }
+
+        .options-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .options-panel.open .options-content {
+            max-height: 600px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            padding: 1.5rem 0.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Option Group */
+        .option-group {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .option-group-title {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Toggle Switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+
+        .toggle-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 16px;
+            height: 16px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .toggle.active::after {
+            left: 23px;
+            background: var(--bg-primary);
+        }
+
+        /* Scrape Button */
+        .scrape-btn {
+            width: 100%;
+            padding: 1.25rem 2rem;
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: var(--bg-primary);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scrape-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .scrape-btn:hover::before {
+            left: 100%;
+        }
+
+        .scrape-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0, 245, 212, 0.3);
+        }
+
+        .scrape-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .scrape-btn.loading {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        /* Output Panel */
+        .output-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 600px;
+        }
+
+        .output-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.active {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 12px var(--accent-cyan);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status-indicator.success {
+            background: #10b981;
+            box-shadow: 0 0 12px #10b981;
+        }
+
+        .status-indicator.error {
+            background: var(--accent-pink);
+            box-shadow: 0 0 12px var(--accent-pink);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-top: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Terminal Output */
+        .terminal {
+            flex: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #ff5f57; }
+        .terminal-dot.yellow { background: #febc2e; }
+        .terminal-dot.green { background: #28c840; }
+
+        .terminal-title {
+            flex: 1;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .terminal-body {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            line-height: 1.8;
+        }
+
+        .terminal-line {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.25rem;
+            animation: terminalFadeIn 0.3s ease;
+        }
+
+        @keyframes terminalFadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .terminal-prompt {
+            color: var(--accent-cyan);
+            user-select: none;
+        }
+
+        .terminal-text {
+            color: var(--text-secondary);
+        }
+
+        .terminal-text.success { color: #10b981; }
+        .terminal-text.error { color: var(--accent-pink); }
+        .terminal-text.info { color: var(--accent-blue); }
+        .terminal-text.highlight { color: var(--accent-orange); }
+
+        /* Result Display */
+        .result-container {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .result-title {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-style: italic;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .result-btn {
+            padding: 0.5rem 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .result-btn:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            border-color: var(--accent-cyan);
+        }
+
+        .result-meta {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .result-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .result-content {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            animation: fadeInUp 0.8s ease-out 0.4s backwards;
+        }
+
+        .footer-text {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .footer-text a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 2rem 1rem;
+            }
+
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="noise"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-mark">S/</div>
+                <div class="logo-text">SCRAPE</div>
+            </div>
+            <h1 class="hero-title">
+                Neural <span class="accent">Extraction</span><br>Engine
+            </h1>
+            <p class="hero-subtitle">Advanced web content extraction with AI preprocessing</p>
+        </header>
+
+        <main class="main-grid">
+            <!-- Input Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Configuration</span>
+                    <span class="card-badge">v1.0</span>
+                </div>
+
+                <div class="url-input-wrapper">
+                    <span class="url-input-icon">⌘</span>
+                    <input
+                        type="url"
+                        class="url-input"
+                        id="urlInput"
+                        placeholder="https://example.com/page-to-scrape"
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="options-panel" id="optionsPanel">
+                    <div class="options-header" onclick="toggleOptions()">
+                        <div class="options-header-left">
+                            <span class="options-header-title">Advanced Options</span>
+                            <span class="options-count" id="optionsCount">6</span>
+                        </div>
+                        <svg class="options-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 9l6 6 6-6"/>
+                        </svg>
+                    </div>
+                    <div class="options-content">
+                        <div class="options-grid">
+                            <div class="option-group">
+                                <div class="option-group-title">JavaScript & Dynamic</div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Wait for JS</span>
+                                    <div class="toggle active" data-option="wait_for_js" onclick="toggleOption(this)"></div>
+                                </div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Scroll page</span>
+                                    <div class="toggle" data-option="scroll_page" onclick="toggleOption(this)"></div>
+                                </div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Stealth mode</span>
+                                    <div class="toggle" data-option="stealth_mode" onclick="toggleOption(this)"></div>
+                                </div>
+                            </div>
+                            <div class="option-group">
+                                <div class="option-group-title">Content Preprocessing</div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Remove links</span>
+                                    <div class="toggle" data-option="remove_links" onclick="toggleOption(this)"></div>
+                                </div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Remove images</span>
+                                    <div class="toggle" data-option="remove_images" onclick="toggleOption(this)"></div>
+                                </div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Remove nav/footer</span>
+                                    <div class="toggle active" data-option="remove_nav_footer" onclick="toggleOption(this)"></div>
+                                </div>
+                            </div>
+                            <div class="option-group">
+                                <div class="option-group-title">Extraction</div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Main content only</span>
+                                    <div class="toggle active" data-option="only_main_content" onclick="toggleOption(this)"></div>
+                                </div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">BM25 filter</span>
+                                    <div class="toggle" data-option="use_bm25_filter" onclick="toggleOption(this)"></div>
+                                </div>
+                            </div>
+                            <div class="option-group">
+                                <div class="option-group-title">Timing</div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Wait time</span>
+                                    <select id="waitTime" style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.75rem;">
+                                        <option value="1">1s</option>
+                                        <option value="2" selected>2s</option>
+                                        <option value="3">3s</option>
+                                        <option value="5">5s</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="scrape-btn" id="scrapeBtn" onclick="startScrape()">
+                    Extract Content
+                </button>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="card output-panel">
+                <div class="card-header">
+                    <div class="output-header">
+                        <div class="status-indicator" id="statusIndicator"></div>
+                        <span class="card-title">Live Output</span>
+                    </div>
+                    <span class="card-badge" id="statusBadge">Ready</span>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressStatus">Waiting for input...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                </div>
+
+                <div class="terminal">
+                    <div class="terminal-header">
+                        <div class="terminal-dot red"></div>
+                        <div class="terminal-dot yellow"></div>
+                        <div class="terminal-dot green"></div>
+                        <span class="terminal-title">scrape-engine</span>
+                    </div>
+                    <div class="terminal-body" id="terminalBody">
+                        <div class="terminal-line">
+                            <span class="terminal-prompt">→</span>
+                            <span class="terminal-text info">Neural Extraction Engine initialized</span>
+                        </div>
+                        <div class="terminal-line">
+                            <span class="terminal-prompt">→</span>
+                            <span class="terminal-text">Enter a URL and click Extract to begin</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-container" id="resultContainer" style="display: none;">
+                    <div class="result-header">
+                        <span class="result-title" id="resultTitle">Extracted Content</span>
+                        <div class="result-actions">
+                            <button class="result-btn" onclick="copyResult()">Copy</button>
+                            <button class="result-btn" onclick="downloadResult()">Download</button>
+                        </div>
+                    </div>
+                    <div class="result-meta">
+                        <span>📄 <span id="wordCount">0</span> words</span>
+                        <span>🕐 <span id="scrapeTime">0s</span></span>
+                    </div>
+                    <div class="result-content" id="resultContent"></div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p class="footer-text">
+                Powered by <a href="https://github.com/unclecode/crawl4ai" target="_blank">Crawl4AI</a> •
+                Built for intelligent content extraction
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // State
+        let scrapeResult = null;
+        let startTime = null;
+
+        // Options state
+        const options = {
+            wait_for_js: true,
+            scroll_page: false,
+            stealth_mode: false,
+            remove_links: false,
+            remove_images: false,
+            remove_nav_footer: true,
+            only_main_content: true,
+            use_bm25_filter: false
+        };
+
+        // Toggle options panel
+        function toggleOptions() {
+            document.getElementById('optionsPanel').classList.toggle('open');
+        }
+
+        // Toggle individual option
+        function toggleOption(el) {
+            el.classList.toggle('active');
+            const option = el.dataset.option;
+            options[option] = el.classList.contains('active');
+            updateOptionsCount();
+        }
+
+        // Update active options count
+        function updateOptionsCount() {
+            const count = Object.values(options).filter(v => v).length;
+            document.getElementById('optionsCount').textContent = count;
+        }
+
+        // Terminal logging
+        function terminalLog(message, type = '') {
+            const terminal = document.getElementById('terminalBody');
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            line.innerHTML = `
+                <span class="terminal-prompt">→</span>
+                <span class="terminal-text ${type}">${escapeHtml(message)}</span>
+            `;
+            terminal.appendChild(line);
+            // Smooth scroll to bottom
+            line.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Update progress
+        function updateProgress(percent, status) {
+            document.getElementById('progressFill').style.width = `${percent}%`;
+            document.getElementById('progressPercent').textContent = `${percent}%`;
+            document.getElementById('progressStatus').textContent = status;
+        }
+
+        // Update status indicator
+        function setStatus(status) {
+            const indicator = document.getElementById('statusIndicator');
+            const badge = document.getElementById('statusBadge');
+
+            indicator.className = 'status-indicator';
+
+            switch(status) {
+                case 'active':
+                    indicator.classList.add('active');
+                    badge.textContent = 'Processing';
+                    break;
+                case 'success':
+                    indicator.classList.add('success');
+                    badge.textContent = 'Complete';
+                    break;
+                case 'error':
+                    indicator.classList.add('error');
+                    badge.textContent = 'Error';
+                    break;
+                default:
+                    badge.textContent = 'Ready';
+            }
+        }
+
+        // Start scraping
+        async function startScrape() {
+            const url = document.getElementById('urlInput').value.trim();
+
+            if (!url) {
+                terminalLog('Error: Please enter a URL', 'error');
+                return;
+            }
+
+            try {
+                new URL(url);
+            } catch {
+                terminalLog('Error: Invalid URL format', 'error');
+                return;
+            }
+
+            // Reset UI
+            const btn = document.getElementById('scrapeBtn');
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.textContent = 'Extracting...';
+
+            document.getElementById('terminalBody').innerHTML = '';
+            document.getElementById('resultContainer').style.display = 'none';
+            scrapeResult = null;
+            startTime = Date.now();
+
+            setStatus('active');
+            terminalLog(`Starting extraction: ${url}`, 'info');
+            updateProgress(0, 'Initializing...');
+
+            // Build request
+            const request = {
+                url: url,
+                wait_for_js: options.wait_for_js,
+                wait_time: parseFloat(document.getElementById('waitTime').value),
+                scroll_page: options.scroll_page,
+                stealth_mode: options.stealth_mode,
+                remove_links: options.remove_links,
+                remove_images: options.remove_images,
+                remove_nav_footer: options.remove_nav_footer,
+                only_main_content: options.only_main_content,
+                use_bm25_filter: options.use_bm25_filter
+            };
+
+            try {
+                const response = await fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(request)
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('event:')) {
+                            const eventMatch = line.match(/event: (\w+)/);
+                            const dataMatch = line.match(/data: (.+)/);
+
+                            if (eventMatch && dataMatch) {
+                                const eventType = eventMatch[1];
+                                const data = JSON.parse(dataMatch[1]);
+
+                                switch (eventType) {
+                                    case 'status':
+                                        terminalLog(data.message, 'info');
+                                        updateProgress(data.progress, data.message);
+                                        break;
+                                    case 'result':
+                                        handleResult(data);
+                                        break;
+                                    case 'error':
+                                        terminalLog(`Error: ${data.message}`, 'error');
+                                        setStatus('error');
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                terminalLog(`Connection error: ${error.message}`, 'error');
+                setStatus('error');
+            }
+
+            // Reset button
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.textContent = 'Extract Content';
+        }
+
+        // Handle successful result
+        function handleResult(data) {
+            scrapeResult = data;
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+            setStatus('success');
+            terminalLog(`Extraction complete!`, 'success');
+            terminalLog(`Title: ${data.title || 'Untitled'}`, 'highlight');
+            terminalLog(`Words: ${data.word_count.toLocaleString()}`, '');
+
+            // Show result panel
+            const resultContainer = document.getElementById('resultContainer');
+            resultContainer.style.display = 'block';
+            document.getElementById('resultTitle').textContent = data.title || 'Extracted Content';
+            document.getElementById('wordCount').textContent = data.word_count.toLocaleString();
+            document.getElementById('scrapeTime').textContent = `${elapsed}s`;
+            document.getElementById('resultContent').textContent = data.content;
+
+            // Scroll result into view
+            setTimeout(() => {
+                resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        // Copy result to clipboard
+        async function copyResult() {
+            if (!scrapeResult) return;
+
+            try {
+                await navigator.clipboard.writeText(scrapeResult.content);
+                terminalLog('Copied to clipboard!', 'success');
+            } catch {
+                terminalLog('Failed to copy', 'error');
+            }
+        }
+
+        // Download result as JSON
+        function downloadResult() {
+            if (!scrapeResult) return;
+
+            const blob = new Blob([JSON.stringify(scrapeResult, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `scraped_${scrapeResult.doc_id}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            terminalLog('Downloaded JSON file', 'success');
+        }
+
+        // Enter key to submit
+        document.getElementById('urlInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') startScrape();
+        });
+
+        // Initialize options count
+        updateOptionsCount();
+    </script>
+</body>
+</html>
