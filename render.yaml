@@ -1,12 +1,6 @@
 services:
   - type: web
     name: scrape-neural-engine
-    runtime: python
-    buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: uvicorn scraper_api:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /opt/render/.cache/ms-playwright
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     autoDeploy: true
