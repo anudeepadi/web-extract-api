@@ -2,3 +2,8 @@ crawl4ai==0.7.7
 fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.0.0
+python-dotenv>=1.0.0
+# Scrapy scraping engine
+scrapy>=2.11.0
+# Firecrawl API client (optional - requires API key)
+firecrawl-py>=1.0.0

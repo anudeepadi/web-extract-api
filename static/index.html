@@ -225,6 +225,145 @@
             letter-spacing: 0.05em;
         }
 
+        /* Scraper Selector */
+        .scraper-selector {
+            margin-bottom: 2rem;
+        }
+
+        .scraper-selector-title {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .scraper-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+        }
+
+        @media (max-width: 640px) {
+            .scraper-options {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .scraper-option {
+            position: relative;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .scraper-option:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(30, 30, 35, 1);
+        }
+
+        .scraper-option.selected {
+            border-color: var(--accent-cyan);
+            background: rgba(0, 245, 212, 0.05);
+        }
+
+        .scraper-option.selected::before {
+            content: '✓';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+        }
+
+        .scraper-icon {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .scraper-name {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .scraper-desc {
+            font-family: var(--font-mono);
+            font-size: 0.625rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+        }
+
+        .scraper-option[data-scraper="crawl4ai"] .scraper-icon { color: var(--accent-cyan); }
+        .scraper-option[data-scraper="scrapy"] .scraper-icon { color: #60a839; }
+        .scraper-option[data-scraper="firecrawl"] .scraper-icon { color: var(--accent-orange); }
+
+        /* API Key Input */
+        .api-key-wrapper {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255, 107, 53, 0.05);
+            border: 1px solid rgba(255, 107, 53, 0.2);
+            border-radius: var(--radius-sm);
+            display: none;
+        }
+
+        .api-key-wrapper.visible {
+            display: block;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .api-key-label {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent-orange);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .api-key-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .api-key-input:focus {
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+        }
+
+        .api-key-hint {
+            font-family: var(--font-mono);
+            font-size: 0.625rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .api-key-hint a {
+            color: var(--accent-orange);
+            text-decoration: none;
+        }
+
         /* URL Input */
         .url-input-wrapper {
             position: relative;
@@ -761,7 +900,47 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">Configuration</span>
-                    <span class="card-badge">v1.0</span>
+                    <span class="card-badge">v1.1</span>
+                </div>
+
+                <!-- Scraper Selector -->
+                <div class="scraper-selector">
+                    <div class="scraper-selector-title">Select Scraping Engine</div>
+                    <div class="scraper-options">
+                        <div class="scraper-option selected" data-scraper="crawl4ai" onclick="selectScraper('crawl4ai')">
+                            <div class="scraper-icon">🤖</div>
+                            <div class="scraper-name">Crawl4AI</div>
+                            <div class="scraper-desc">AI-powered • Local</div>
+                        </div>
+                        <div class="scraper-option" data-scraper="scrapy" onclick="selectScraper('scrapy')">
+                            <div class="scraper-icon">🕷️</div>
+                            <div class="scraper-name">Scrapy</div>
+                            <div class="scraper-desc">Fast • Framework</div>
+                        </div>
+                        <div class="scraper-option" data-scraper="firecrawl" onclick="selectScraper('firecrawl')">
+                            <div class="scraper-icon">🔥</div>
+                            <div class="scraper-name">Firecrawl</div>
+                            <div class="scraper-desc">Cloud API • LLM-ready</div>
+                        </div>
+                    </div>
+
+                    <!-- Firecrawl API Key Input -->
+                    <div class="api-key-wrapper" id="firecrawlApiKey">
+                        <div class="api-key-label">
+                            <span>🔑</span>
+                            <span>Firecrawl API Key</span>
+                        </div>
+                        <input
+                            type="password"
+                            class="api-key-input"
+                            id="firecrawlKey"
+                            placeholder="fc-YOUR_API_KEY"
+                            autocomplete="off"
+                        >
+                        <div class="api-key-hint">
+                            Get your key at <a href="https://firecrawl.dev" target="_blank">firecrawl.dev</a> • Or set <code>FIRECRAWL_API_KEY</code> env var
+                        </div>
+                    </div>
                 </div>
 
                 <div class="url-input-wrapper">
@@ -907,8 +1086,11 @@
 
         <footer>
             <p class="footer-text">
-                Powered by <a href="https://github.com/unclecode/crawl4ai" target="_blank">Crawl4AI</a> •
-                Built for intelligent content extraction
+                Powered by
+                <a href="https://github.com/unclecode/crawl4ai" target="_blank">Crawl4AI</a> •
+                <a href="https://github.com/scrapy/scrapy" target="_blank">Scrapy</a> •
+                <a href="https://github.com/mendableai/firecrawl" target="_blank">Firecrawl</a>
+                — Built for intelligent content extraction
             </p>
         </footer>
     </div>
@@ -917,6 +1099,7 @@
         // State
         let scrapeResult = null;
         let startTime = null;
+        let selectedScraper = 'crawl4ai';
 
         // Options state
         const options = {
@@ -929,6 +1112,33 @@
             only_main_content: true,
             use_bm25_filter: false
         };
+
+        // Select scraper engine
+        function selectScraper(scraper) {
+            selectedScraper = scraper;
+
+            // Update UI
+            document.querySelectorAll('.scraper-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            document.querySelector(`[data-scraper="${scraper}"]`).classList.add('selected');
+
+            // Show/hide API key input for Firecrawl
+            const apiKeyWrapper = document.getElementById('firecrawlApiKey');
+            if (scraper === 'firecrawl') {
+                apiKeyWrapper.classList.add('visible');
+            } else {
+                apiKeyWrapper.classList.remove('visible');
+            }
+
+            // Update terminal
+            const scraperNames = {
+                'crawl4ai': 'Crawl4AI (AI-powered local scraper)',
+                'scrapy': 'Scrapy (High-performance framework)',
+                'firecrawl': 'Firecrawl (Cloud API with LLM-ready output)'
+            };
+            terminalLog(`Switched to ${scraperNames[scraper]}`, 'info');
+        }
 
         // Toggle options panel
         function toggleOptions() {
@@ -1032,9 +1242,14 @@
             terminalLog(`Starting extraction: ${url}`, 'info');
             updateProgress(0, 'Initializing...');
 
+            // Get Firecrawl API key (optional - can use env var on server)
+            const firecrawlKey = document.getElementById('firecrawlKey').value.trim();
+
             // Build request
             const request = {
                 url: url,
+                scraper: selectedScraper,
+                api_key: selectedScraper === 'firecrawl' ? firecrawlKey : null,
                 wait_for_js: options.wait_for_js,
                 wait_time: parseFloat(document.getElementById('waitTime').value),
                 scroll_page: options.scroll_page,
