@@ -93,6 +93,12 @@ class ScrapeRequest(BaseModel):
     excluded_tags: Optional[list[str]] = None
     use_bm25_filter: bool = False
 
+    # Firecrawl v2 specific options
+    firecrawl_formats: Optional[list[str]] = None  # e.g., ["markdown", "html", "links", "screenshot"]
+    firecrawl_actions: Optional[list[dict]] = None  # Page interaction actions
+    firecrawl_extract_schema: Optional[dict] = None  # JSON schema for LLM extraction
+    firecrawl_extract_prompt: Optional[str] = None  # Natural language prompt for extraction
+
 
 class TextPreprocessor:
     """Clean and preprocess scraped content."""
@@ -291,50 +297,148 @@ process.start()
 
 # ==================== FIRECRAWL SCRAPER ====================
 
-async def scrape_with_firecrawl(url: str, api_key: str, formats: list = None) -> dict:
-    """Scrape using Firecrawl API."""
+async def scrape_with_firecrawl(
+    url: str,
+    api_key: str,
+    formats: list = None,
+    actions: list = None,
+    extract_schema: dict = None,
+    extract_prompt: str = None
+) -> dict:
+    """
+    Scrape using Firecrawl v2 API with enhanced features.
+
+    Args:
+        url: URL to scrape
+        api_key: Firecrawl API key
+        formats: Output formats (markdown, html, links, screenshot)
+        actions: List of page interaction actions (click, wait, write, press, screenshot)
+        extract_schema: JSON schema for structured LLM extraction
+        extract_prompt: Natural language prompt for LLM extraction
+
+    Returns:
+        dict with scraped data including content, metadata, extracted data, etc.
+    """
     if not FIRECRAWL_AVAILABLE:
         raise ValueError("Firecrawl is not installed. Run: pip install firecrawl-py")
-    
+
     if not api_key:
         raise ValueError("Firecrawl API key is required")
-    
-    # Initialize Firecrawl client (new SDK uses 'Firecrawl' not 'FirecrawlApp')
+
+    # Initialize Firecrawl client
     client = Firecrawl(api_key=api_key)
-    
-    # Default formats
+
+    # Default formats if none specified
     if formats is None:
         formats = ["markdown", "html"]
-    
+
     try:
-        # Scrape the URL (new SDK uses 'scrape' not 'scrape_url')
-        result = client.scrape(url, formats=formats)
-        
-        # Handle both dict and object responses
+        # Build scrape parameters
+        scrape_params = {
+            "url": url,
+            "formats": formats
+        }
+
+        # Add actions if specified (for page interactions)
+        if actions:
+            scrape_params["actions"] = actions
+
+        # Add LLM extraction if specified
+        if extract_schema or extract_prompt:
+            # If formats doesn't include a json extraction format, add it
+            if not any(isinstance(f, dict) and f.get('type') == 'json' for f in formats):
+                json_format = {"type": "json"}
+
+                if extract_schema:
+                    json_format["schema"] = extract_schema
+                if extract_prompt:
+                    json_format["prompt"] = extract_prompt
+
+                scrape_params["formats"].append(json_format)
+
+        # Scrape the URL with v2 API
+        result = client.scrape(**scrape_params)
+
+        # Parse response - handle both dict and object formats
+        response_data = {}
+
+        # Extract markdown content
         if hasattr(result, 'markdown'):
-            markdown = result.markdown or ''
-            html = getattr(result, 'html', '') or ''
-            metadata = getattr(result, 'metadata', {}) or {}
-            title = metadata.get('title', '') if isinstance(metadata, dict) else getattr(metadata, 'title', '')
-        else:
-            markdown = result.get('markdown', '')
-            html = result.get('html', '')
+            response_data['markdown'] = result.markdown or ''
+        elif isinstance(result, dict) and 'markdown' in result:
+            response_data['markdown'] = result.get('markdown', '')
+
+        # Extract HTML content
+        if hasattr(result, 'html'):
+            response_data['html'] = result.html or ''
+        elif isinstance(result, dict) and 'html' in result:
+            response_data['html'] = result.get('html', '')
+
+        # Extract links
+        if hasattr(result, 'links'):
+            response_data['links'] = result.links or []
+        elif isinstance(result, dict) and 'links' in result:
+            response_data['links'] = result.get('links', [])
+
+        # Extract screenshot
+        if hasattr(result, 'screenshot'):
+            response_data['screenshot'] = result.screenshot or ''
+        elif isinstance(result, dict) and 'screenshot' in result:
+            response_data['screenshot'] = result.get('screenshot', '')
+
+        # Extract LLM-extracted JSON data
+        if hasattr(result, 'json'):
+            response_data['extracted_data'] = result.json
+        elif isinstance(result, dict) and 'json' in result:
+            response_data['extracted_data'] = result.get('json')
+
+        # Extract metadata
+        metadata = {}
+        if hasattr(result, 'metadata'):
+            metadata = result.metadata or {}
+            if not isinstance(metadata, dict):
+                # Convert object to dict
+                metadata = {
+                    'title': getattr(metadata, 'title', ''),
+                    'description': getattr(metadata, 'description', ''),
+                    'language': getattr(metadata, 'language', ''),
+                    'sourceURL': getattr(metadata, 'sourceURL', url),
+                    'statusCode': getattr(metadata, 'statusCode', None),
+                    'keywords': getattr(metadata, 'keywords', ''),
+                    'robots': getattr(metadata, 'robots', ''),
+                    'ogTitle': getattr(metadata, 'ogTitle', ''),
+                    'ogDescription': getattr(metadata, 'ogDescription', ''),
+                    'ogImage': getattr(metadata, 'ogImage', ''),
+                }
+        elif isinstance(result, dict) and 'metadata' in result:
             metadata = result.get('metadata', {})
-            title = metadata.get('title', '')
-        
+
+        response_data['metadata'] = metadata
+
+        # Extract title from metadata
+        title = ''
+        if isinstance(metadata, dict):
+            title = metadata.get('title', '') or metadata.get('ogTitle', '')
+
+        # Build final response
         return {
             'url': url,
             'title': title,
-            'content': markdown,
-            'html': html,
+            'content': response_data.get('markdown', ''),
+            'html': response_data.get('html', ''),
+            'links': response_data.get('links', []),
+            'screenshot': response_data.get('screenshot', ''),
+            'extracted_data': response_data.get('extracted_data'),
             'metadata': metadata,
+            'raw_result': response_data  # Keep full result for advanced use cases
         }
     except Exception as e:
         return {
             'url': url,
             'title': '',
-            'content': str(e),
-            'error': True
+            'content': f"Firecrawl error: {str(e)}",
+            'error': True,
+            'error_message': str(e)
         }
 
 
@@ -357,7 +461,7 @@ async def stream_scrape(request: ScrapeRequest):
             if not FIRECRAWL_AVAILABLE:
                 yield send_event("error", {"message": "Firecrawl not installed. Run: pip install firecrawl-py"})
                 return
-            
+
             # Use API key from request, or fall back to environment variable
             api_key = request.api_key or FIRECRAWL_API_KEY
             if not api_key:
@@ -365,14 +469,41 @@ async def stream_scrape(request: ScrapeRequest):
                 return
 
             yield send_event("status", {"message": "Connecting to Firecrawl API...", "progress": 20})
-            yield send_event("status", {"message": f"Scraping: {url}", "progress": 40})
-            
-            scraped_data = await scrape_with_firecrawl(url, api_key)
-            
+
+            # Prepare Firecrawl options
+            formats = request.firecrawl_formats if request.firecrawl_formats else ["markdown", "html"]
+
+            # Build status message based on options
+            features_used = []
+            if request.firecrawl_actions:
+                features_used.append(f"{len(request.firecrawl_actions)} actions")
+            if request.firecrawl_extract_schema or request.firecrawl_extract_prompt:
+                features_used.append("LLM extraction")
+            if "screenshot" in formats:
+                features_used.append("screenshot")
+
+            status_msg = f"Scraping with formats: {', '.join(formats)}"
+            if features_used:
+                status_msg += f" ({', '.join(features_used)})"
+
+            yield send_event("status", {"message": status_msg, "progress": 30})
+            yield send_event("status", {"message": f"Processing: {url}", "progress": 50})
+
+            # Call enhanced Firecrawl function with v2 features
+            scraped_data = await scrape_with_firecrawl(
+                url=url,
+                api_key=api_key,
+                formats=formats,
+                actions=request.firecrawl_actions,
+                extract_schema=request.firecrawl_extract_schema,
+                extract_prompt=request.firecrawl_extract_prompt
+            )
+
             if scraped_data.get('error'):
-                yield send_event("error", {"message": f"Firecrawl error: {scraped_data['content']}"})
+                error_msg = scraped_data.get('error_message', scraped_data.get('content', 'Unknown error'))
+                yield send_event("error", {"message": f"Firecrawl error: {error_msg}"})
                 return
-            
+
             yield send_event("status", {"message": "Content received from Firecrawl", "progress": 70})
 
         # ==================== SCRAPY ====================
@@ -526,6 +657,19 @@ async def stream_scrape(request: ScrapeRequest):
                 "only_main_content": request.only_main_content,
             }
         }
+
+        # Add Firecrawl-specific data if available
+        if request.scraper == ScraperType.FIRECRAWL:
+            if scraped_data.get('links'):
+                output['links'] = scraped_data['links']
+            if scraped_data.get('screenshot'):
+                output['screenshot'] = scraped_data['screenshot']
+            if scraped_data.get('extracted_data'):
+                output['extracted_data'] = scraped_data['extracted_data']
+            if scraped_data.get('metadata'):
+                output['metadata'] = scraped_data['metadata']
+            if scraped_data.get('html'):
+                output['html'] = scraped_data['html']
 
         yield send_event("status", {"message": "Complete!", "progress": 100})
         yield send_event("result", output)

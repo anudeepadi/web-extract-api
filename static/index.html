@@ -940,6 +940,46 @@
                         <div class="api-key-hint">
                             Get your key at <a href="https://firecrawl.dev" target="_blank">firecrawl.dev</a> • Or set <code>FIRECRAWL_API_KEY</code> env var
                         </div>
+
+                        <!-- Firecrawl v2 Options -->
+                        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                            <div class="api-key-label" style="margin-bottom: 0.75rem;">
+                                <span>⚙️</span>
+                                <span>Firecrawl v2 Features</span>
+                            </div>
+
+                            <!-- Output Formats -->
+                            <div style="margin-bottom: 1rem;">
+                                <div style="font-family: var(--font-mono); font-size: 0.625rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em;">Output Formats</div>
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <label style="display: flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); cursor: pointer;">
+                                        <input type="checkbox" id="fcFormatMarkdown" checked style="cursor: pointer;"> Markdown
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); cursor: pointer;">
+                                        <input type="checkbox" id="fcFormatHtml" checked style="cursor: pointer;"> HTML
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); cursor: pointer;">
+                                        <input type="checkbox" id="fcFormatLinks" style="cursor: pointer;"> Links
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); cursor: pointer;">
+                                        <input type="checkbox" id="fcFormatScreenshot" style="cursor: pointer;"> Screenshot
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- LLM Extraction -->
+                            <div style="margin-bottom: 0.5rem;">
+                                <div style="font-family: var(--font-mono); font-size: 0.625rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em;">LLM Extraction (Optional)</div>
+                                <textarea
+                                    id="fcExtractPrompt"
+                                    placeholder="e.g., Extract the company name, description, and contact email from this page"
+                                    style="width: 100%; min-height: 60px; padding: 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); resize: vertical;"
+                                ></textarea>
+                                <div style="font-family: var(--font-mono); font-size: 0.625rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                    Use natural language to extract structured data with AI
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1261,6 +1301,26 @@
                 use_bm25_filter: options.use_bm25_filter
             };
 
+            // Add Firecrawl v2 specific options
+            if (selectedScraper === 'firecrawl') {
+                // Collect selected formats
+                const formats = [];
+                if (document.getElementById('fcFormatMarkdown').checked) formats.push('markdown');
+                if (document.getElementById('fcFormatHtml').checked) formats.push('html');
+                if (document.getElementById('fcFormatLinks').checked) formats.push('links');
+                if (document.getElementById('fcFormatScreenshot').checked) formats.push('screenshot');
+
+                if (formats.length > 0) {
+                    request.firecrawl_formats = formats;
+                }
+
+                // Add LLM extraction prompt if provided
+                const extractPrompt = document.getElementById('fcExtractPrompt').value.trim();
+                if (extractPrompt) {
+                    request.firecrawl_extract_prompt = extractPrompt;
+                }
+            }
+
             try {
                 const response = await fetch('/api/scrape', {
                     method: 'POST',
@@ -1327,13 +1387,50 @@
             terminalLog(`Title: ${data.title || 'Untitled'}`, 'highlight');
             terminalLog(`Words: ${data.word_count.toLocaleString()}`, '');
 
+            // Log Firecrawl-specific data
+            if (data.links && data.links.length > 0) {
+                terminalLog(`Links found: ${data.links.length}`, 'info');
+            }
+            if (data.extracted_data) {
+                terminalLog(`AI extracted data available`, 'success');
+            }
+            if (data.screenshot) {
+                terminalLog(`Screenshot captured`, 'info');
+            }
+
             // Show result panel
             const resultContainer = document.getElementById('resultContainer');
             resultContainer.style.display = 'block';
             document.getElementById('resultTitle').textContent = data.title || 'Extracted Content';
             document.getElementById('wordCount').textContent = data.word_count.toLocaleString();
             document.getElementById('scrapeTime').textContent = `${elapsed}s`;
-            document.getElementById('resultContent').textContent = data.content;
+
+            // Build result content with additional Firecrawl data
+            let resultHtml = data.content;
+
+            // Add extracted data section if available
+            if (data.extracted_data) {
+                resultHtml = '=== AI EXTRACTED DATA ===\n' +
+                    JSON.stringify(data.extracted_data, null, 2) +
+                    '\n\n=== CONTENT ===\n' + resultHtml;
+            }
+
+            // Add links section if available
+            if (data.links && data.links.length > 0) {
+                resultHtml += '\n\n=== LINKS (' + data.links.length + ') ===\n';
+                data.links.slice(0, 20).forEach(link => {
+                    if (typeof link === 'string') {
+                        resultHtml += link + '\n';
+                    } else if (link.url) {
+                        resultHtml += `${link.url}${link.title ? ' - ' + link.title : ''}\n`;
+                    }
+                });
+                if (data.links.length > 20) {
+                    resultHtml += `... and ${data.links.length - 20} more links\n`;
+                }
+            }
+
+            document.getElementById('resultContent').textContent = resultHtml;
 
             // Scroll result into view
             setTimeout(() => {
