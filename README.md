@@ -21,7 +21,7 @@ Options are implemented differently across adapters. JavaScript rendering and BM
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
     Client["Browser UI or HTTP client"] --> API["FastAPI: POST /api/scrape"]
     API --> Select{"Engine selection"}
     Select --> Crawl["Crawl4AI / Chromium"]
