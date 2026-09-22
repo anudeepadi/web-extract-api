@@ -1,0 +1,35 @@
+event: status
+data: {"message": "Initializing CRAWL4AI...", "progress": 5}
+
+event: status
+data: {"message": "Browser configured", "progress": 15}
+
+event: status
+data: {"message": "Fetching: http://127.0.0.1:8097/article.html", "progress": 30}
+
+event: status
+data: {"message": "Browser launched, navigating...", "progress": 40}
+
+event: status
+data: {"message": "Page loaded, extracting content...", "progress": 60}
+
+event: status
+data: {"message": "Preprocessing content...", "progress": 75}
+
+event: status
+data: {"message": "Removed links", "progress": 80}
+
+event: status
+data: {"message": "Removed images", "progress": 82}
+
+event: status
+data: {"message": "Removed nav/footer", "progress": 85}
+
+event: status
+data: {"message": "Finalizing...", "progress": 95}
+
+event: status
+data: {"message": "Complete!", "progress": 100}
+
+event: result
+data: {"doc_id": "2eb01b1f3c4e", "url": "http://127.0.0.1:8097/article.html", "title": "Planning a small documentation release", "content": "# Planning a small documentation release\nA useful documentation release gives a new reader one clear way to start. Begin with the task the project solves, then show the command that runs its smallest example.\n## Release checklist\nCheck the installation steps in a clean environment. Capture output from a local example. State which integrations were tested and which still require credentials. Keep the source URL beside extracted content so a reader can trace the result.\nThis synthetic article is included only as an extraction fixture. It contains no customer data and needs no external service.", "word_count": 96, "scraped_at": "2026-09-22T07:29:36.508656+00:00", "scraper_used": "crawl4ai", "settings_used": {"scraper": "crawl4ai", "stealth_mode": false, "wait_for_js": false, "remove_links": true, "remove_images": true, "only_main_content": false}}

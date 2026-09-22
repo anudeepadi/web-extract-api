@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCRAPE — Neural Extraction Engine</title>
+    <title>Web Extract API</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -887,12 +887,12 @@
         <header>
             <div class="logo">
                 <div class="logo-mark">S/</div>
-                <div class="logo-text">SCRAPE</div>
+                <div class="logo-text">WEB EXTRACT API</div>
             </div>
             <h1 class="hero-title">
-                Neural <span class="accent">Extraction</span><br>Engine
+                Web content.<br><span class="accent">Clean output.</span>
             </h1>
-            <p class="hero-subtitle">Advanced web content extraction with AI preprocessing</p>
+            <p class="hero-subtitle">Extract page content with three adapters and streaming progress.</p>
         </header>
 
         <main class="main-grid">
@@ -910,7 +910,7 @@
                         <div class="scraper-option selected" data-scraper="crawl4ai" onclick="selectScraper('crawl4ai')">
                             <div class="scraper-icon">🤖</div>
                             <div class="scraper-name">Crawl4AI</div>
-                            <div class="scraper-desc">AI-powered • Local</div>
+                            <div class="scraper-desc">Browser-based • Local</div>
                         </div>
                         <div class="scraper-option" data-scraper="scrapy" onclick="selectScraper('scrapy')">
                             <div class="scraper-icon">🕷️</div>
@@ -1053,12 +1053,12 @@
                         <div class="terminal-dot red"></div>
                         <div class="terminal-dot yellow"></div>
                         <div class="terminal-dot green"></div>
-                        <span class="terminal-title">scrape-engine</span>
+                        <span class="terminal-title">web-extract-api</span>
                     </div>
                     <div class="terminal-body" id="terminalBody">
                         <div class="terminal-line">
                             <span class="terminal-prompt">→</span>
-                            <span class="terminal-text info">Neural Extraction Engine initialized</span>
+                            <span class="terminal-text info">Web Extract API initialized</span>
                         </div>
                         <div class="terminal-line">
                             <span class="terminal-prompt">→</span>
@@ -1133,7 +1133,7 @@
 
             // Update terminal
             const scraperNames = {
-                'crawl4ai': 'Crawl4AI (AI-powered local scraper)',
+                'crawl4ai': 'Crawl4AI (browser-based local scraper)',
                 'scrapy': 'Scrapy (High-performance framework)',
                 'firecrawl': 'Firecrawl (Cloud API with LLM-ready output)'
             };

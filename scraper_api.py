@@ -59,7 +59,7 @@ class ScraperType(str, Enum):
     FIRECRAWL = "firecrawl"
 
 
-app = FastAPI(title="Web Scraper API", version="1.1.0")
+app = FastAPI(title="Web Extract API", version="1.1.0")
 
 # CORS for frontend
 app.add_middleware(

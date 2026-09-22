@@ -1,135 +1,141 @@
-# SCRAPE — Neural Extraction Engine
+# Web Extract API
 
-A stunning web scraper with a cyberpunk-editorial UI, powered by Crawl4AI. Extract clean, preprocessed content from any website with live streaming output.
+A FastAPI service and browser interface for extracting cleaned page content with streaming progress.
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)
-![Crawl4AI](https://img.shields.io/badge/Crawl4AI-0.7.7-cyan)
+Web Extract API provides one request format for three extraction backends: Crawl4AI, Scrapy, and optional Firecrawl. It is a compact example of browser-backed extraction, interchangeable adapters, text preprocessing, and server-sent events for long-running requests.
 
-## Features
+**Status:** development tool. Engine behavior depends on the target page, installed browser dependencies, and provider access; extraction quality and availability are not guaranteed.
 
-### Advanced Scraping
-- **JavaScript Rendering** — Wait for dynamic content to load
-- **Stealth Mode** — Bypass bot detection on protected sites
-- **Page Scrolling** — Handle infinite scroll and lazy-loaded content
-- **BM25 Filtering** — Intelligent content extraction using BM25 algorithm
+![Web Extract API extracting a local fixture](docs/images/local-extraction.png)
 
-### Content Preprocessing
-- Remove links while preserving text
-- Strip images and media
-- Remove navigation, headers, and footers
-- Extract main content only
-- Clean whitespace and formatting
+*Actual local extraction of the included example page. Previously named SCRAPE — Neural Extraction Engine. The former hosted URL is unavailable; run the service locally.*
 
-### Beautiful UI
-- Neo-brutalist meets luxury terminal aesthetic
-- Real-time SSE streaming output
-- Terminal-style logging with color-coded messages
-- Smooth progress animations
-- Copy/Download extracted content
+[Quick start](#quick-start) · [Architecture](#architecture) · [API example](#api-example) · [Code guide](#code-guide)
 
-## Installation
+## Capabilities
+
+- Select an extraction engine per request.
+- Configure JavaScript waits, scrolling, and supported content-selection options.
+- Remove links, images, navigation text, and excess whitespace from extracted content.
+- Stream progress and either a result or error through an SSE response.
+- Return source URL, title, cleaned text, word count, timestamp, and engine metadata.
+
+Options are implemented differently across adapters. JavaScript rendering and BM25 filtering belong to the Crawl4AI path; selecting another engine does not imply identical support.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Client["Browser UI or HTTP client"] --> API["FastAPI: POST /api/scrape"]
+    API --> Select{"Engine selection"}
+    Select --> Crawl["Crawl4AI / Chromium"]
+    Select --> Scrapy["Scrapy adapter"]
+    Select --> Firecrawl["Firecrawl service: optional key"]
+    Crawl --> Clean["Text preprocessing"]
+    Scrapy --> Clean
+    Firecrawl --> Clean
+    Clean --> Result["Content and source metadata"]
+    Result --> SSE["SSE progress, result or error"]
+    SSE --> Client
+```
+
+The HTTP API is implemented in one Python module. A separate batch script collects source-attributed documents for a domain-specific dataset workflow.
+
+## Quick start
+
+Use Python 3.11 and install Chromium for browser-backed extraction:
 
 ```bash
-# Clone the repository
-git clone https://github.com/anudeepadi/automatic-winner.git
-cd automatic-winner
-
-# Install dependencies
-pip install crawl4ai fastapi uvicorn
-
-# Setup Crawl4AI browsers
-crawl4ai-setup
+git clone https://github.com/anudeepadi/web-extract-api.git
+cd web-extract-api
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m playwright install chromium
+python -m uvicorn scraper_api:app --host 127.0.0.1 --port 8080
 ```
 
-## Usage
+Linux environments may also need Playwright's system libraries. The [Dockerfile](Dockerfile) lists the container dependencies used by this project.
 
-### Web UI
+Open [localhost:8080](http://localhost:8080) for the static interface or [localhost:8080/docs](http://localhost:8080/docs) for API documentation. Start from the repository root so the `static/` directory is available.
+
+Firecrawl is optional. For that adapter, set `FIRECRAWL_API_KEY` in the process environment before startup. The current module reads the value before calling `load_dotenv`, so a `.env` file alone may not populate that setting.
+
+## Reproduce a local extraction
+
+The included synthetic article needs no external website or API key. From the repository root with the virtual environment active:
 
 ```bash
-python scraper_api.py
+python examples/smoke.py crawl4ai
+python examples/smoke.py scrapy
 ```
 
-Open http://localhost:8080 in your browser.
+Each command starts a temporary loopback fixture server, calls the real FastAPI SSE route, checks the returned title/content/word count and prints the result. It stops its fixture server when done. This checks the two local adapters; it does not call Firecrawl.
 
-### CLI Scraper
+On 22 September 2026, Python 3.11.15 and Crawl4AI 0.7.7 returned:
+
+| Engine | Title | Word count | Result |
+| --- | --- | ---: | --- |
+| Crawl4AI | Planning a small documentation release | 96 | Passed |
+| Scrapy | Planning a small documentation release | 94 | Passed |
+
+[Recorded SSE output](examples/recorded-result.sse) includes the progress events and final JSON from a local API request.
+
+Crawl4AI preserves Markdown headings, so its whitespace-based word count includes the heading markers. The test checks the content rather than assuming identical formatting between engines. This is a fixture check, not an extraction-quality benchmark.
+
+For the same walkthrough in the browser, keep the API running and start the example server in another terminal:
 
 ```bash
-python smoking_cessation_scraper.py
+python -m http.server 8097 --bind 127.0.0.1 --directory examples
 ```
 
-Scrapes smoking cessation resources from CDC, Mayo Clinic, American Lung Association, and more.
+Enter `http://127.0.0.1:8097/article.html` in the UI and select **Crawl4AI**. Turn off **Main Content Only** to match the example configuration, then extract. The returned text should begin with “Planning a small documentation release”.
 
-## API Endpoints
+## API example
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/scrape` | Scrape a URL with SSE streaming |
-| GET | `/api/health` | Health check |
-
-### Request Body
-
-```json
-{
-  "url": "https://example.com",
-  "wait_for_js": true,
-  "wait_time": 2.0,
-  "scroll_page": false,
-  "stealth_mode": false,
-  "remove_links": false,
-  "remove_images": false,
-  "remove_nav_footer": true,
-  "only_main_content": true,
-  "use_bm25_filter": false
-}
+```bash
+curl -N http://localhost:8080/api/scrape \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.com","scraper":"crawl4ai","remove_links":true}'
 ```
 
-### Response (SSE Stream)
+The response is `text/event-stream`, not one JSON document. Consume the progress events and the final `result` or `error` event. The result contains fields such as `doc_id`, `url`, `content`, `word_count`, `scraped_at`, and `scraper_used`.
 
-```
-event: status
-data: {"message": "Fetching URL...", "progress": 30}
+Health check:
 
-event: result
-data: {"doc_id": "abc123", "title": "Page Title", "content": "...", "word_count": 1500}
+```bash
+curl http://localhost:8080/api/health
 ```
 
-## Output Format
+## Container
 
-Each scraped document is saved as JSON:
-
-```json
-{
-  "doc_id": "unique_hash",
-  "source_url": "https://...",
-  "source_name": "Source Name",
-  "title": "Page Title",
-  "content": "Cleaned text content...",
-  "content_markdown": "Full markdown...",
-  "scraped_at": "2024-12-04T...",
-  "word_count": 1234
-}
+```bash
+docker build -t web-extract-api .
+docker run --rm -p 127.0.0.1:10000:10000 web-extract-api
 ```
 
-## Project Structure
+The container uses port 10000, while the local command above uses 8080. Pass provider credentials through an environment file if needed; do not bake them into an image.
 
-```
-├── scraper_api.py              # FastAPI backend with SSE
-├── smoking_cessation_scraper.py # CLI scraper for health resources
-├── static/
-│   └── index.html              # Stunning web UI
-└── scraped_data/               # Output directory
-    ├── manifest.json
-    └── *.json                  # Individual documents
-```
+## Code guide
 
-## Tech Stack
+| Path | Responsibility |
+| --- | --- |
+| [scraper_api.py](scraper_api.py) | Request schema, engine adapters, preprocessing, SSE, and routes |
+| [static/](static/) | Browser interface |
+| [smoking_cessation_scraper.py](smoking_cessation_scraper.py) | Separate batch extraction and source-attributed JSON outputs |
+| [requirements.txt](requirements.txt) | Python dependencies |
+| [Dockerfile](Dockerfile) | Browser runtime and API container |
 
-- **Backend**: FastAPI, Python 3.11+
-- **Scraping**: Crawl4AI, Playwright
-- **Frontend**: Vanilla JS, CSS3 animations
-- **Fonts**: Syne, Instrument Serif, Space Mono
+## Development and limits
+
+The local smoke example covers successful extraction by Crawl4AI and Scrapy. Firecrawl delivery, malformed requests and target-page failures need separate coverage. A health response only verifies the API process; it does not verify extraction.
+
+The Scrapy adapter runs a subprocess synchronously, so it can block other requests while extraction is in progress. Firecrawl behavior depends on the installed SDK and provider access; that paid adapter was not exercised in this verification.
+
+The current service does not authenticate callers or restrict extraction targets beyond URL validation. Keep local use on loopback. A public deployment needs access control and protection against requests to internal network resources. Use sources you are authorized to access.
+
+Contributions should state which adapter and extraction options were exercised and include a small reproducible page or fixture.
 
 ## License
 
-MIT
+No license file is currently tracked. Clarify redistribution terms before treating this repository as an open-source package.
